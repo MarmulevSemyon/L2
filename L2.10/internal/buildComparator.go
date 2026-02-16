@@ -1,6 +1,7 @@
 package internal
 
 import (
+	"fmt"
 	"strconv"
 	"strings"
 	"unicode"
@@ -54,7 +55,7 @@ func extendZeroIfString(str string) string {
 	} else if len(str) == 1 && unicode.IsGraphic(strRune[0]) {
 		strRune = append([]rune{'0'}, strRune...)
 
-	} else if unicode.IsGraphic(strRune[0]) && !(strRune[0] == '-' && unicode.IsDigit(strRune[1])) {
+	} else if !unicode.IsDigit(strRune[0]) && !(strRune[0] == '-' && unicode.IsDigit(strRune[1])) {
 		strRune = append([]rune{'0'}, strRune...)
 	}
 
@@ -76,10 +77,10 @@ func parseMonth(str string) string {
 
 	res := []rune(str)
 
-	if len(res)-1 < 3 {
+	if len(res) < 3 {
 		res = append([]rune("0"), res...)
-	} else if val, ok := month[string(res[:4])]; ok {
-		res = append([]rune(val), res[4:]...)
+	} else if val, ok := month[string(res[:3])]; ok {
+		res = append([]rune(val), res[3:]...)
 	} else {
 		res = append([]rune("0"), res...)
 	}
@@ -129,12 +130,13 @@ func parseHuman(str string) string {
 		return str
 	}
 
-	strChislo := strconv.FormatFloat(chislo, 'g', -1, 64) // переводим в строку
+	strChislo := strconv.FormatFloat(chislo, 'f', -1, 64) // переводим в строку
 	if startChar == len(runeStr)-1 {                      // если суффикс последний эл-т в строке
 		return strChislo
 	}
 
 	res := append([]rune(strChislo), runeStr[startChar+1:]...)
+	fmt.Printf("перевели уже,\nстрока: %s\nначало символов %d\nчто будет после числа: %s\n ", string(res), startChar, string(runeStr[startChar:]))
 
 	return string(res)
 }
@@ -147,7 +149,7 @@ func WrapIgnoreTrailingBlanks(less LessFunc) LessFunc {
 	}
 }
 
-// TODO: если равня то сравнивать по всей строке
+// TODO: если равны то сравнивать по всей строке
 func WrapKeyColumn(less LessFunc, key int) LessFunc {
 	return func(a, b string) bool {
 		aK := getValueByKIndex(a, key)
@@ -157,6 +159,10 @@ func WrapKeyColumn(less LessFunc, key int) LessFunc {
 }
 func getValueByKIndex(str string, ind int) string {
 	res := strings.Split(str, "\t")
+	fmt.Printf("")
+	if len(res) < ind-1 {
+		return ""
+	}
 	return res[ind-1]
 }
 

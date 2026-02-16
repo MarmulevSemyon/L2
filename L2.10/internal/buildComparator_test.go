@@ -1,12 +1,13 @@
 package internal
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 )
 
-func testExtendZeroIfString(t *testing.T) {
+func TestExtendZeroIfString(t *testing.T) {
 	strs := []string{"sort", "-.123c", ".-123r", "123", "-qwe", ".qwe-M", "-.qwe-b", "-0.-h", "-", ".", "", "0.123", "-0.123"}
 
 	expect := []string{"0sort", "0-.123c", "0.-123r", "123", "0-qwe", "0.qwe-M", "0-.qwe-b", "-0.-h", "0-", "0.", "0", "0.123", "-0.123"}
@@ -16,7 +17,7 @@ func testExtendZeroIfString(t *testing.T) {
 	}
 }
 
-func testParseMonth(t *testing.T) {
+func TestParseMonth(t *testing.T) {
 	strs := []string{"sort", "-.123c", "123", "-qwe", ".qjanwe-M", "jan-.qwe-b", "feb-0.-h", "mar-", ".Mar", "May", "", "jun", "-"}
 
 	expect := []string{"0sort", "0-.123c", "0123", "0-qwe", "0.qjanwe-M", "1-.qwe-b", "2-0.-h", "3-", "0.Mar", "5", "0", "6", "0-"}
@@ -25,7 +26,8 @@ func testParseMonth(t *testing.T) {
 		assert.Equal(t, expect[i], actual)
 	}
 }
-func testParseHuman(t *testing.T) {
+
+func TestParseHuman(t *testing.T) {
 	strs := []string{"sort", "-.123c", ".-123r", "123b", "123B", "-Gqwe", ".Mqwe-M", "-.qwe", "-1.G-h", "-", ".", "", "0.123k", "-0.123M"}
 
 	expect := []string{"0sort", "0-.123c", "0.-123r", "123", "123", "0-Gqwe", "0.Mqwe-M", "0-.qwe", "-1073741824-h", "0-", "0.", "0", "125.952", "-128974.848"}
@@ -34,17 +36,18 @@ func testParseHuman(t *testing.T) {
 		assert.Equal(t, expect[i], actual)
 	}
 }
-func testTrim(t *testing.T) {
+
+func TestTrim(t *testing.T) {
 	strs := []string{"sort   ", "-.123c", ".-123r   \t\t", "123b\t", "   123B", "\t-Gqwe", ".Mqwe-M\t   ", "-.q   we"}
 
-	expect := []string{"sort", "-.123c", ".-123r", "123b", "   23B", "\t-Gqwe", ".Mqwe-M", "-.q   we"}
+	expect := []string{"sort", "-.123c", ".-123r", "123b", "   123B", "\t-Gqwe", ".Mqwe-M", "-.q   we"}
 	for i := range strs {
-		actual := parseHuman(strs[i])
+		actual := strings.TrimRight(strs[i], " \t")
 		assert.Equal(t, expect[i], actual)
 	}
 }
 
-func testTGetValueByKIndex(t *testing.T) {
+func TestTGetValueByKIndex(t *testing.T) {
 	strs := []string{"sort\tqwe", "-.123c\t", ".-123r\t \t123", "123b\t.\t", "   123B", "\t-Gqwe", ".Mqwe-M\t   ", "-.q   we\t123\t"}
 
 	expect := []string{"qwe", "", " ", ".", "", "", "   ", "123"}

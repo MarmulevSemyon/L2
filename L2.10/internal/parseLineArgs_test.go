@@ -22,12 +22,13 @@ func TestParseLine(t *testing.T) {
 		assert.Equal(t, empty, actual)
 	}
 
-	lineArgsN := [][]string{{"sort", "-c", "-r", "-n", "-u", "-b", "-k", "12"}} // {"sort", "-crnubk12"},
-	// {"sort", "-crnubk=12"},
-	// {"sort", "-crnubk", "12"},
-	// {"sort", "-crnub", "--key", "12"},
-	// {"sort", "--key", "12", "-crnub"},
-
+	lineArgsN := [][]string{{"sort", "-c", "-r", "-n", "-u", "-b", "-k", "12"},
+		{"sort", "-crnubk12"},
+		{"sort", "-crnubk=12"},
+		{"sort", "-crnubk", "12"},
+		{"sort", "-crnub", "--key", "12"},
+		{"sort", "--key", "12", "-crnub"},
+	}
 	expectedN := LineArgs{
 		K: 12,
 		N: true,
@@ -40,7 +41,7 @@ func TestParseLine(t *testing.T) {
 	}
 	for i := range lineArgsN {
 		actual, err := ParseLine(lineArgsN[i])
-		assert.NotNil(t, err)
+		assert.Nil(t, err)
 		assert.Equal(t, expectedN, actual)
 	}
 
@@ -63,7 +64,7 @@ func TestParseLine(t *testing.T) {
 	}
 	for _, v := range lineArgsM {
 		actual, err := ParseLine(v)
-		assert.NotNil(t, err)
+		assert.Nil(t, err)
 		assert.Equal(t, expectedM, actual)
 	}
 
@@ -79,14 +80,14 @@ func TestParseLine(t *testing.T) {
 		N: false,
 		R: true,
 		U: true,
-		M: true,
+		M: false,
 		B: true,
 		C: true,
 		H: true,
 	}
 	for _, v := range lineArgsH {
 		actual, err := ParseLine(v)
-		assert.NotNil(t, err)
+		assert.Nil(t, err)
 		assert.Equal(t, expectedH, actual)
 	}
 
