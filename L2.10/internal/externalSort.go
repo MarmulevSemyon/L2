@@ -2,7 +2,6 @@ package internal
 
 import (
 	"bufio"
-	"bytes"
 	"io"
 	"os"
 	"sort"
@@ -19,8 +18,8 @@ type chunkResult struct {
 }
 
 const bufSize = 1 << 20
-
-func makeSortedChunks(r io.Reader, less LessFunc, workers int) ([]string, error) {
+const chunkLimitBytes = 64 << 20 // лимит накопления строк в памяти перед сортировкой
+func MakeSortedChunks(r io.Reader, less LessFunc, workers int) ([]string, error) {
 
 	chIn := make(chan []string, workers) // чанки строк
 	resCh := make(chan chunkResult, workers)
@@ -32,13 +31,8 @@ func makeSortedChunks(r io.Reader, less LessFunc, workers int) ([]string, error)
 		close(resCh)
 	}()
 
-	lengthFile, err := lineCounter(r)
-	if err != nil {
-		return nil, err
-	}
-
 	// читает строки из файла, который нужно вывести, в chIn для работышей
-	prodErr := produceChunks(r, chIn, lengthFile)
+	prodErr := produceChunks(r, chIn)
 	// закрываем вход для работышей и ждём
 	close(chIn)
 
@@ -96,10 +90,10 @@ func writeChunkToTempFile(lines []string) (string, error) {
 	return file.Name(), nil
 }
 
-// читает строки из файла, который нужно вывести, в канал для работышей
-func produceChunks(r io.Reader, chIn chan<- []string, lengthFile int) error {
+// читает строки из исходного файла в канал для работышей
+func produceChunks(r io.Reader, chIn chan<- []string) error {
 	br := bufio.NewReaderSize(r, bufSize)
-	capCurLines := min(lengthFile/8, bufSize)
+	capCurLines := bufSize / 8
 	curLines := make([]string, 0, capCurLines)
 	var curBytes int64
 
@@ -120,34 +114,15 @@ func produceChunks(r io.Reader, chIn chan<- []string, lengthFile int) error {
 		curLines = append(curLines, line)
 		curBytes += int64(len(line))
 
-		if curBytes >= bufSize {
+		if curBytes >= chunkLimitBytes {
 			flush()
 		}
 		if err == io.EOF {
 			break
 		}
 	}
+	flush()
 	return nil
-}
-
-// подсчет количества строчек в исходном файле
-func lineCounter(r io.Reader) (int, error) {
-	buf := make([]byte, 32<<10)
-	count := 0
-	lineSep := []byte{'\n'}
-
-	for {
-		c, err := r.Read(buf)
-		count += bytes.Count(buf[:c], lineSep)
-
-		switch {
-		case err == io.EOF:
-			return count, nil
-
-		case err != nil:
-			return count, err
-		}
-	}
 }
 
 // собирает названия файлов от работышей
