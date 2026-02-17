@@ -2,19 +2,18 @@ package main
 
 import (
 	"fmt"
-	"main/internal"
-	"os"
+	"runtime"
 )
 
 func main() {
 
-	fmt.Println(os.Args)
-	lineArgs, err := internal.ParseLine(os.Args)
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
+	fmt.Println(runtime.GOMAXPROCS(4))
+	// lineArgs, err := internal.ParseLine(os.Args)
+	// if err != nil {
+	// 	fmt.Fprintln(os.Stderr, err)
+	// 	os.Exit(1)
+	// }
 
-	fmt.Println(lineArgs)
+	// fmt.Println(lineArgs)
 
 }

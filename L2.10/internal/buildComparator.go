@@ -70,11 +70,12 @@ func MonthLess(less LessFunc) LessFunc {
 		return less(aMonth, bMonth)
 	}
 }
-func parseMonth(str string) string {
-	month := map[string]string{"Jan": "1", "jan": "1", "Feb": "2", "feb": "2", "Mar": "3", "mar": "3", "Apr": "4", "apr": "4",
-		"May": "5", "may": "5", "Jun": "6", "jun": "6", "Jul": "7", "jul": "7", "Aug": "8", "aug": "8", "Sep": "9", "sep": "9",
-		"Oct": "10", "oct": "10", "Nov": "11", "nov": "11", "Dec": "12", "dec": "12"}
 
+var month = map[string]string{"Jan": "1", "jan": "1", "Feb": "2", "feb": "2", "Mar": "3", "mar": "3", "Apr": "4", "apr": "4",
+	"May": "5", "may": "5", "Jun": "6", "jun": "6", "Jul": "7", "jul": "7", "Aug": "8", "aug": "8", "Sep": "9", "sep": "9",
+	"Oct": "10", "oct": "10", "Nov": "11", "nov": "11", "Dec": "12", "dec": "12"}
+
+func parseMonth(str string) string {
 	res := []rune(str)
 
 	if len(res) < 3 {
@@ -96,9 +97,11 @@ func HumanLess(less LessFunc) LessFunc {
 	}
 }
 
+var suffix = map[rune]int{'B': 1, 'b': 1, 'K': 1 << 10, 'k': 1 << 10, 'M': 1 << 20, 'm': 1 << 20, 'G': 1 << 30, 'g': 1 << 30}
+
 // если есть суффикс B, K, M, G, то увеличь в нужное число раз число, которое перед суффиксом
 func parseHuman(str string) string {
-	suffix := map[rune]int{'B': 1, 'b': 1, 'K': 1 << 10, 'k': 1 << 10, 'M': 1 << 20, 'm': 1 << 20, 'G': 1 << 30, 'g': 1 << 30}
+
 	runeStr := []rune(str)
 	startChar := len(runeStr)
 
