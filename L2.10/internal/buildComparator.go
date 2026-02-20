@@ -13,6 +13,7 @@ func BuildLess(flags LineArgs) (LessFunc, error) {
 	less := LexLess // базово — лексикографически
 
 	if flags.B {
+		fmt.Println("ЗАШЛО В ФЛАГ -b")
 		less = WrapIgnoreTrailingBlanks(less)
 	}
 	if flags.K > 0 {
@@ -38,7 +39,7 @@ func LexLess(a, b string) bool {
 	return a < b
 }
 
-// Лексикографическое сравнение, но строка "безчисел" считаются как "0безчисел"
+// Лексикографическое сравнение, но строка "безчисел" считаются как "0безчисел" (не работает, считает 11>101)
 func NumericLess(less LessFunc) LessFunc {
 	return func(a, b string) bool {
 		aNum := extendZeroIfString(a)
@@ -47,7 +48,7 @@ func NumericLess(less LessFunc) LessFunc {
 	}
 }
 
-// Ставим ноль в начало, если не число
+// Ставим ноль в начало, если не число НЕПРАВИЛЬН РАБОТАЕТ (11>101)
 func extendZeroIfString(str string) string {
 	strRune := []rune(str)
 	if len(str) == 0 {
@@ -146,8 +147,11 @@ func parseHuman(str string) string {
 
 func WrapIgnoreTrailingBlanks(less LessFunc) LessFunc {
 	return func(a, b string) bool {
-		aTrim := strings.Trim(a, " \t")
-		bTrim := strings.Trim(b, " \t")
+		aTrim := strings.TrimRight(a, " \t")
+		// fmt.Printf("ЗАТРИМИЛАСЬ ПЕРВАЯ СТРОКА\nбыло:<%s>\nстало:<%s>\n", a, aTrim)
+		bTrim := strings.TrimRight(b, " \t")
+		// fmt.Printf("ЗАТРИМИЛАСЬ ВТОРАЯ СТРОКА\nбыло:<%s>\nстало:<%s>\n", a, aTrim)
+
 		return less(aTrim, bTrim)
 	}
 }

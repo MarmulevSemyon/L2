@@ -5,6 +5,7 @@ import (
 	"io"
 	"os"
 	"sort"
+	"strings"
 	"sync"
 )
 
@@ -19,26 +20,32 @@ type chunkResult struct {
 
 const bufSize = 1 << 20
 const chunkLimitBytes = 64 << 20 // лимит накопления строк в памяти перед сортировкой
+
+// MakeSortedChunks cоздаёт набор файлов с отсортированными строками.
+// r - ридер соритруемого файла;
+// less - функция сравнения двух строк;
+// workers - число работышей.
+// возвращает массив названий файлов и ошибку.
 func MakeSortedChunks(r io.Reader, less LessFunc, workers int) ([]string, error) {
 
 	chIn := make(chan []string, workers) // чанки строк
 	resCh := make(chan chunkResult, workers)
 	// работыши принимают значения из chIn, сортируют, отдают на запись в temp, и затем отправляют названия файлов в resCh
 	wg := startChunkWorkers(chIn, resCh, less, workers)
-	// закрыть resCh, когда воркеры закончат
+	// закрыываем resCh, когда воркеры закончат
 	go func() {
 		wg.Wait()
 		close(resCh)
 	}()
 
-	// читает строки из файла, который нужно вывести, в chIn для работышей
+	// читаем строки из файла, который нужно вывести, в chIn для работышей
 	prodErr := produceChunks(r, chIn)
 	// закрываем вход для работышей и ждём
 	close(chIn)
 
-	// собираем результаты (и удаляем мусор при ошибке)
+	// собираем результаты
 	files, collectErr := collectChunkResults(resCh)
-
+	// и удаляем мусор при ошибке
 	if prodErr != nil {
 		cleanupFiles(files)
 		return nil, prodErr
@@ -51,7 +58,7 @@ func MakeSortedChunks(r io.Reader, less LessFunc, workers int) ([]string, error)
 	return files, nil
 }
 
-// работыши принимают массивы строк, сортируют, отдают на запись в temp, и затем отправляют названия файлов в resCh
+// работыши принимают массивы строк, сортируют, отдают на запись в tempFile, и затем отправляют названия файлов в resCh
 func startChunkWorkers(chIn <-chan []string, resCh chan<- chunkResult, less LessFunc, workers int) *sync.WaitGroup {
 	var wg = sync.WaitGroup{}
 	wg.Add(workers)
@@ -83,6 +90,9 @@ func writeChunkToTempFile(lines []string) (string, error) {
 		if _, err := bw.WriteString(s); err != nil {
 			return "", err
 		}
+		if err := bw.WriteByte('\n'); err != nil {
+			return "", err
+		}
 	}
 	if err := bw.Flush(); err != nil {
 		return "", err
@@ -110,7 +120,7 @@ func produceChunks(r io.Reader, chIn chan<- []string) error {
 		if err != nil && err != io.EOF {
 			return err
 		}
-
+		line = strings.TrimRight(line, "\r\n")
 		curLines = append(curLines, line)
 		curBytes += int64(len(line))
 

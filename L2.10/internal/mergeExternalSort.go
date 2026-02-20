@@ -34,10 +34,10 @@ func (h *mergeHeap) Pop() any {
 	return x
 }
 
-// mergeSortedFilesToWriterHeap сливает отсортированные файлы (paths) в writer.
+// MergeSortedFilesToWriterHeap сливает отсортированные файлы (paths) в writer.
 // less — компаратор строк.
 // unique — если true, убирает дубли (как -u) на лету.
-func mergeSortedFilesToWriterHeap(paths []string, w io.Writer, less LessFunc, unique bool) error {
+func MergeSortedFilesToWriterHeap(paths []string, w io.Writer, less LessFunc, unique bool) error {
 	type fileState struct {
 		f  *os.File
 		br *bufio.Reader
@@ -109,7 +109,7 @@ func mergeSortedFilesToWriterHeap(paths []string, w io.Writer, less LessFunc, un
 	return nil
 }
 
-// читает строку, сохраняя '\n' если он был
+// читает строку
 func readLineKeepNL(br *bufio.Reader) (string, bool, error) {
 	line, err := br.ReadString('\n')
 	if err != nil && err != io.EOF {
