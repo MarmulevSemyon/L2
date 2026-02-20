@@ -7,13 +7,27 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestExtendZeroIfString(t *testing.T) {
-	strs := []string{"sort", "-.123c", ".-123r", "123", "-qwe", ".qwe-M", "-.qwe-b", "-0.-h", "-", ".", "", "0.123", "-0.123"}
+func TestNumericPrefLess(t *testing.T) {
+	strs := []string{"-098",
+		"0000",
+		"0ю123",
+		"qweqfsd",
+		" апвуп",
+		".123",
+		"0.123",
+		"11",
+		"98",
+		" 98.",
+		"103",
+		" 123",
+		"123qaqeq",
+		"1024A",
+		"1024K",
+		"100000,213215"}
 
-	expect := []string{"0sort", "0-.123c", "0.-123r", "123", "0-qwe", "0.qwe-M", "0-.qwe-b", "-0.-h", "0-", "0.", "0", "0.123", "-0.123"}
-	for i := range strs {
-		actual := extendZeroIfString(strs[i])
-		assert.Equal(t, expect[i], actual)
+	for i := 0; i < len(strs)-1; i++ {
+		actual := NumericPrefLess(strs[i], strs[i+1])
+		assert.Equal(t, true, actual)
 	}
 }
 
@@ -27,15 +41,15 @@ func TestParseMonth(t *testing.T) {
 	}
 }
 
-func TestParseHuman(t *testing.T) {
-	strs := []string{"sort", "-.123c", ".-123r", "123b", "123B", "-Gqwe", ".Mqwe-M", "-.qwe", "-1.G-h", "-", ".", "", "0.123k", "-0.123M"}
+// func TestParseHuman(t *testing.T) {
+// 	strs := []string{"sort", "-.123c", ".-123r", "123b", "123B", "-Gqwe", ".Mqwe-M", "-.qwe", "-1.G-h", "-", ".", "", "0.123k", "-0.123M"}
 
-	expect := []string{"0sort", "0-.123c", "0.-123r", "123", "123", "0-Gqwe", "0.Mqwe-M", "0-.qwe", "-1073741824-h", "0-", "0.", "0", "125.952", "-128974.848"}
-	for i := range strs {
-		actual := parseHuman(strs[i])
-		assert.Equal(t, expect[i], actual)
-	}
-}
+// 	expect := []string{"0sort", "0-.123c", "0.-123r", "123", "123", "0-Gqwe", "0.Mqwe-M", "0-.qwe", "-1073741824-h", "0-", "0.", "0", "125.952", "-128974.848"}
+// 	for i := range strs {
+// 		actual := parseHuman(strs[i])
+// 		assert.Equal(t, expect[i], actual)
+// 	}
+// }
 
 func TestTrim(t *testing.T) {
 	strs := []string{"sort   ", "-.123c", ".-123r   \t\t", "123b\t", "   123B", "\t-Gqwe", ".Mqwe-M\t   ", "-.q   we"}

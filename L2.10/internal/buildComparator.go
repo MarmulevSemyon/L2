@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
-	"unicode"
 )
 
 type LessFunc func(a, b string) bool
@@ -12,20 +11,21 @@ type LessFunc func(a, b string) bool
 func BuildLess(flags LineArgs) (LessFunc, error) {
 	less := LexLess // базово — лексикографически
 
+	// из nMh не может быть только 1
+	if flags.N {
+		less = NumericPrefLess
+	}
+	if flags.H {
+		less = HumanLess
+	}
 	if flags.B {
-		fmt.Println("ЗАШЛО В ФЛАГ -b")
+		// fmt.Println("ЗАШЛО В ФЛАГ -b")
 		less = WrapIgnoreTrailingBlanks(less)
 	}
 	if flags.K > 0 {
 		less = WrapKeyColumn(less, flags.K)
 	}
-	// одновремменно nMh не может быть
-	if flags.N {
-		less = NumericLess(less)
-	}
-	if flags.H {
-		less = HumanLess(less)
-	}
+
 	if flags.M {
 		less = MonthLess(less)
 	}
@@ -39,28 +39,79 @@ func LexLess(a, b string) bool {
 	return a < b
 }
 
-// Лексикографическое сравнение, но строка "безчисел" считаются как "0безчисел" (не работает, считает 11>101)
-func NumericLess(less LessFunc) LessFunc {
-	return func(a, b string) bool {
-		aNum := extendZeroIfString(a)
-		bNum := extendZeroIfString(b)
-		return less(aNum, bNum)
+// NumericPrefLess сравнивает строки как числа
+// Если числа равны, то сравниваем исходные строки лексикографически.
+func NumericPrefLess(a, b string) bool {
+	aTrim := strings.TrimLeft(a, " ") // в GNU sort не смотрятся пробелы если числа
+	bTrim := strings.TrimLeft(b, " ") //
+
+	av, _ := leadingNumberOrZero(aTrim)
+	bv, _ := leadingNumberOrZero(bTrim)
+
+	if av < bv {
+		return true
 	}
+	if av > bv {
+		return false
+	}
+
+	// tie-breaker: лексикографически исходные строки
+	return a < b
 }
 
-// Ставим ноль в начало, если не число НЕПРАВИЛЬН РАБОТАЕТ (11>101)
-func extendZeroIfString(str string) string {
-	strRune := []rune(str)
-	if len(str) == 0 {
-		strRune = []rune{'0'}
-	} else if len(str) == 1 && unicode.IsGraphic(strRune[0]) {
-		strRune = append([]rune{'0'}, strRune...)
-
-	} else if !unicode.IsDigit(strRune[0]) && !(strRune[0] == '-' && unicode.IsDigit(strRune[1])) {
-		strRune = append([]rune{'0'}, strRune...)
+// возвращает число и индекс последней цифры (-1, если нет цифр)
+// исправь чтобы обрабатывало точку в начале (.123, -.123, +.123 )
+func leadingNumberOrZero(s string) (float64, int) {
+	i := 0
+	n := len(s)
+	if n == 0 {
+		return 0, -1
 	}
 
-	return string(strRune)
+	// +-
+	if s[i] == '+' || s[i] == '-' {
+		i++
+		if i >= n {
+			return 0, -1
+		}
+	}
+
+	startDigits := i
+
+	// целая часть или 0
+	for i < n && isDigit(s[i]) {
+		i++
+	}
+
+	hasIntDigits := i > startDigits
+
+	// после точки, если она есть
+	if i < n && s[i] == '.' {
+		j := i + 1
+		// числа после точки
+		for j < n && isDigit(s[j]) {
+			j++
+		}
+		hasFracDigits := j > i+1
+		if hasIntDigits || hasFracDigits {
+			i = j
+			hasIntDigits = hasIntDigits || hasFracDigits // .123 - валидно (0.123)
+		}
+	}
+	// нет цифр в начале — нет числа
+	if !hasIntDigits {
+		return 0, -1
+	}
+	// переводим найденное число в строку
+	numStr := s[:i]
+	v, err := strconv.ParseFloat(numStr, 64)
+	if err != nil {
+		return 0, 0
+	}
+	return v, i
+}
+func isDigit(b byte) bool {
+	return b >= '0' && b <= '9'
 }
 
 func MonthLess(less LessFunc) LessFunc {
@@ -90,59 +141,41 @@ func parseMonth(str string) string {
 	return string(res)
 }
 
-func HumanLess(less LessFunc) LessFunc {
-	return func(a, b string) bool {
-		aHuman := parseHuman(a)
-		bHuman := parseHuman(b)
-		return less(aHuman, bHuman)
+func HumanLess(a, b string) bool {
+	aVal, indA := leadingNumberOrZero(a)
+	bVal, indB := leadingNumberOrZero(b)
+
+	if indA == -1 {
+		aVal = findSuffixAndMultyply(aVal, a, indA)
 	}
+	if indB == -1 {
+		bVal = findSuffixAndMultyply(bVal, b, indB)
+	}
+	if aVal < bVal {
+		return true
+	}
+	if aVal > bVal {
+		return false
+	}
+
+	// tie-breaker: лексикографически исходные строки
+	return a < b
 }
 
-var suffix = map[rune]int{'B': 1, 'b': 1, 'K': 1 << 10, 'k': 1 << 10, 'M': 1 << 20, 'm': 1 << 20, 'G': 1 << 30, 'g': 1 << 30}
+var suffix = map[byte]float64{'B': 1, 'b': 1, 'K': 1 << 10, 'k': 1 << 10, 'M': 1 << 20, 'm': 1 << 20, 'G': 1 << 30, 'g': 1 << 30}
 
 // если есть суффикс B, K, M, G, то увеличь в нужное число раз число, которое перед суффиксом
-func parseHuman(str string) string {
-
-	runeStr := []rune(str)
-	startChar := len(runeStr)
-
-	for i, v := range runeStr {
-		if unicode.IsDigit(v) || (v == '-' && i == 0 && len(str) > 1 && unicode.IsDigit(runeStr[i+1])) {
-			continue
-		} else if v == '.' && i != 0 && unicode.IsDigit(runeStr[i-1]) {
-			continue
-		} else {
-			startChar = i
-			break
-		}
+func findSuffixAndMultyply(num float64, str string, indexLastDigit int) float64 {
+	// нет символов потом
+	if indexLastDigit == len(str)-1 {
+		return num
 	}
 
-	if startChar == 0 {
-		res := []rune(str)
-		res = append([]rune("0"), res...)
-		return string(res)
+	if val, ok := suffix[str[indexLastDigit+1]]; ok {
+		num *= val // умножаем, если есть суффикс
 	}
 
-	chislo, _ := strconv.ParseFloat(string(runeStr[:startChar]), 64)
-	if startChar == len(runeStr) { // чисто число
-		return str
-	}
-
-	if val, ok := suffix[runeStr[startChar]]; ok {
-		chislo *= float64(val) // умножаем, если есть суффикс
-	} else {
-		return str
-	}
-
-	strChislo := strconv.FormatFloat(chislo, 'f', -1, 64) // переводим в строку
-	if startChar == len(runeStr)-1 {                      // если суффикс последний эл-т в строке
-		return strChislo
-	}
-
-	res := append([]rune(strChislo), runeStr[startChar+1:]...)
-	fmt.Printf("перевели уже,\nстрока: %s\nначало символов %d\nчто будет после числа: %s\n ", string(res), startChar, string(runeStr[startChar:]))
-
-	return string(res)
+	return num
 }
 
 func WrapIgnoreTrailingBlanks(less LessFunc) LessFunc {
