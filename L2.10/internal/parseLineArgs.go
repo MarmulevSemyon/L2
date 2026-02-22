@@ -56,7 +56,7 @@ func validate(flags LineArgs) error {
 	if flags.H {
 		setOfNMH = append(setOfNMH, 'h')
 	}
-	if len(setOfNMH) != 2 {
+	if len(setOfNMH) > 2 {
 		return fmt.Errorf("флаги '%s' не совместимы", setOfNMH)
 	}
 	return nil

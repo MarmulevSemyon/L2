@@ -8,17 +8,9 @@ import (
 	"strings"
 )
 
-func PrintIsSorted(stringFile string, less LessFunc) (string, error) {
-	f, err := os.Open(stringFile)
-	if err != nil {
-		f.Close()
-		return "", err
-	}
+func PrintIsSorted(file *os.File, less LessFunc) (string, error) {
 
-	br := bufio.NewReader(f)
-	defer func() {
-		_ = f.Close()
-	}()
+	br := bufio.NewReader(file)
 
 	var prev string
 	hasPrev := false

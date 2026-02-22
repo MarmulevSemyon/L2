@@ -1,7 +1,6 @@
 package internal
 
 import (
-	"fmt"
 	"strconv"
 	"strings"
 )
@@ -106,9 +105,9 @@ func leadingNumberOrZero(s string) (float64, int) {
 	numStr := s[:i]
 	v, err := strconv.ParseFloat(numStr, 64)
 	if err != nil {
-		return 0, 0
+		return 0, -1
 	}
-	return v, i
+	return v, i - 1
 }
 func isDigit(b byte) bool {
 	return b >= '0' && b <= '9'
@@ -144,13 +143,32 @@ func parseMonth(str string) string {
 func HumanLess(a, b string) bool {
 	aVal, indA := leadingNumberOrZero(a)
 	bVal, indB := leadingNumberOrZero(b)
+	aSuf, bSuf := 1.0, 1.0
 
-	if indA == -1 {
-		aVal = findSuffixAndMultyply(aVal, a, indA)
+	if indA != -1 {
+		// fmt.Printf(a, aVal)
+		aVal, aSuf = findSuffixAndMultyply(aVal, a, indA)
+		// fmt.Printf("\nsufA = %f\n", aSuf)
 	}
-	if indB == -1 {
-		bVal = findSuffixAndMultyply(bVal, b, indB)
+	if indB != -1 {
+		bVal, bSuf = findSuffixAndMultyply(bVal, b, indB)
+		// fmt.Printf("\nsufB = %f\n", bSuf)
 	}
+	// fmt.Printf("\nindA:\t<%v>\nindB:\t<%v>", indA, indB)
+	// fmt.Printf("\nстрокаA:\t<%v>\nстрокаB:\t<%v>\nsuffA:\t<%v>\nsuffB:\t<%v>\n", a, b, aSuf, bSuf)
+	if aVal < 0 {
+		aSuf *= -1
+	}
+	if bVal < 0 {
+		bSuf *= -1
+	}
+	if aSuf < bSuf {
+		return true
+	}
+	if aSuf > bSuf {
+		return false
+	}
+
 	if aVal < bVal {
 		return true
 	}
@@ -158,24 +176,28 @@ func HumanLess(a, b string) bool {
 		return false
 	}
 
-	// tie-breaker: лексикографически исходные строки
+	//лексикографически исходные строки
 	return a < b
 }
 
 var suffix = map[byte]float64{'B': 1, 'b': 1, 'K': 1 << 10, 'k': 1 << 10, 'M': 1 << 20, 'm': 1 << 20, 'G': 1 << 30, 'g': 1 << 30}
 
 // если есть суффикс B, K, M, G, то увеличь в нужное число раз число, которое перед суффиксом
-func findSuffixAndMultyply(num float64, str string, indexLastDigit int) float64 {
+func findSuffixAndMultyply(num float64, str string, indexLastDigit int) (float64, float64) {
+	// fmt.Printf("\nЗАШЛО; число: %v; строка:%s; последняя цифра: %c", num, str, rune(str[indexLastDigit]))
 	// нет символов потом
-	if indexLastDigit == len(str)-1 {
-		return num
+	if indexLastDigit >= len(str)-1 {
+		return num, 1.0
 	}
-
+	suf := 1.0
+	// fmt.Printf("\nЗАШЛО; символ после числа %c\n", str[indexLastDigit+1])
 	if val, ok := suffix[str[indexLastDigit+1]]; ok {
 		num *= val // умножаем, если есть суффикс
+		suf = val
+		// fmt.Println("ЗАШЛО;есть суффикc:", val)
 	}
 
-	return num
+	return num, suf
 }
 
 func WrapIgnoreTrailingBlanks(less LessFunc) LessFunc {
@@ -199,7 +221,6 @@ func WrapKeyColumn(less LessFunc, key int) LessFunc {
 }
 func getValueByKIndex(str string, ind int) string {
 	res := strings.Split(str, "\t")
-	fmt.Printf("")
 	if len(res) < ind-1 {
 		return ""
 	}

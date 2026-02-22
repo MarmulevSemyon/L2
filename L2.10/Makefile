@@ -1,31 +1,33 @@
-.PHONY: all build fmt test rebuild clean
+APP_NAME := sort
+BIN_DIR  := bin
+CMD_DIR  := ./cmd/sort
 
-MAIN_PKG = ./cmd/sort
-# GO_CORE_FILES = cmd/sort/ internal/
-GO_TEST_FILES = test/*.go
+GO      := go
+GOFMT   := gofmt
+GOLINT  := golint
 
-BINARY_NAME = bin/sort
+.PHONY: all fmt vet lint test build run clean
 
-all: build
-
-build: fmt
-	go build -o $(BINARY_NAME) $(MAIN_PKG)
-	./$(BINARY_NAME)
+all: fmt vet lint test build
 
 fmt:
-	go fmt ./...
-
-test: vet
-	go test ./...
+	$(GOFMT) -w ./cmd ./internal 
 
 vet:
-	go vet ./...
+	$(GO) vet ./...
 
 lint:
-	golint ./...
+	$(GOLINT) ./...
 
+test:
+	$(GO) test ./...
 
-rebuild: clean build
+build:
+	mkdir -p $(BIN_DIR)
+	$(GO) build -o $(BIN_DIR)/$(APP_NAME) $(CMD_DIR)
+
+run: build
+	./$(BIN_DIR)/$(APP_NAME)
 
 clean:
-	rm -f $(BINARY_NAME)
+	rm -rf $(BIN_DIR)
