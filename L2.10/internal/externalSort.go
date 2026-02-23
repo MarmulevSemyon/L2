@@ -26,7 +26,7 @@ const chunkLimitBytes = 64 << 20 // лимит накопления строк �
 // less - функция сравнения двух строк;
 // workers - число работышей.
 // возвращает массив названий файлов и ошибку.
-func MakeSortedChunks(r io.Reader, less LessFunc, workers int) ([]string, error) {
+func MakeSortedChunks(r io.Reader, less lessFunc, workers int) ([]string, error) {
 
 	chIn := make(chan []string, workers) // чанки строк
 	resCh := make(chan chunkResult, workers)
@@ -59,7 +59,7 @@ func MakeSortedChunks(r io.Reader, less LessFunc, workers int) ([]string, error)
 }
 
 // работыши принимают массивы строк, сортируют, отдают на запись в tempFile, и затем отправляют названия файлов в resCh
-func startChunkWorkers(chIn <-chan []string, resCh chan<- chunkResult, less LessFunc, workers int) *sync.WaitGroup {
+func startChunkWorkers(chIn <-chan []string, resCh chan<- chunkResult, less lessFunc, workers int) *sync.WaitGroup {
 	var wg = sync.WaitGroup{}
 	wg.Add(workers)
 	for i := 0; i < workers; i++ {

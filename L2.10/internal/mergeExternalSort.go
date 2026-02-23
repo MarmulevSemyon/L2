@@ -14,7 +14,7 @@ type heapItem struct {
 
 type mergeHeap struct {
 	items []heapItem
-	less  LessFunc
+	less  lessFunc
 }
 
 func (h mergeHeap) Len() int { return len(h.items) }
@@ -37,7 +37,7 @@ func (h *mergeHeap) Pop() any {
 // MergeSortedFilesToWriterHeap сливает отсортированные файлы (paths) в writer.
 // less — компаратор строк.
 // unique — если true, убирает дубли (как -u) на лету.
-func MergeSortedFilesToWriterHeap(paths []string, w io.Writer, less LessFunc, unique bool) error {
+func MergeSortedFilesToWriterHeap(paths []string, w io.Writer, less lessFunc, unique bool) error {
 	type fileState struct {
 		f  *os.File
 		br *bufio.Reader
@@ -121,6 +121,6 @@ func readLineKeepNL(br *bufio.Reader) (string, bool, error) {
 	return line, true, nil
 }
 
-func equalByLess(a, b string, less LessFunc) bool {
+func equalByLess(a, b string, less lessFunc) bool {
 	return !less(a, b) && !less(b, a)
 }

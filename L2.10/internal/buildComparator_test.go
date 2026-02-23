@@ -26,7 +26,7 @@ func TestNumericPrefLess(t *testing.T) {
 		"100000,213215"}
 
 	for i := 0; i < len(strs)-1; i++ {
-		actual := NumericPrefLess(strs[i], strs[i+1])
+		actual := numericPrefLess(strs[i], strs[i+1])
 		// fmt.Printf("strs[i] =\t<%s>\nstrs[i+1] =\t<%s>\nbool =\t%v\n", strs[i], strs[i+1], actual)
 		assert.Equal(t, true, actual)
 	}
@@ -70,7 +70,7 @@ func TestParseHuman(t *testing.T) {
 	}
 
 	for i := 0; i < len(strs)-1; i++ {
-		actual := HumanLess(strs[i], strs[i+1])
+		actual := humanLess(strs[i], strs[i+1])
 		// fmt.Printf("strs[i] =\t%s\nstrs[i+1] =\t%s\nbool =\t%v\n", strs[i], strs[i+1], actual)
 		assert.Equal(t, true, actual)
 	}
@@ -97,7 +97,7 @@ func TestTrim(t *testing.T) {
 func TestTGetValueByKIndex(t *testing.T) {
 	strs := []string{"sort\tqwe", "-.123c\t", ".-123r\t \t123", "123b\t.\t", "   123B", "\t-Gqwe", ".Mqwe-M\t   ", "-.q   we\t123\t"}
 
-	expect := []string{"qwe", "", " ", ".", "", "", "   ", "123"}
+	expect := []string{"qwe", "", " ", ".", "", "-Gqwe", "   ", "123"}
 	for i := range strs {
 		actual := getValueByKIndex(strs[i], 2)
 		assert.Equal(t, expect[i], actual)

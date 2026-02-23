@@ -2,6 +2,7 @@ package internal
 
 import (
 	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -13,8 +14,7 @@ func TestPrintIsSortedLexic(t *testing.T) {
 		C: true,
 	}
 	less, _ := BuildLess(flags)
-
-	fileName := "C:\\Users\\79164\\Desktop\\proga\\GO\\WB\\L2\\L2.10\\test\\test.txt"
+	fileName := filepath.Join("..", "test", "test.txt")
 	file, _ := os.Open(fileName)
 	defer file.Close()
 	response, err := PrintIsSorted(file, less)
@@ -27,8 +27,8 @@ func TestPrintIsSortedLexic(t *testing.T) {
 		R: true,
 	}
 	less1, _ := BuildLess(flags1)
+	fileName1 := filepath.Join("..", "test", "test1.txt")
 
-	fileName1 := "C:\\Users\\79164\\Desktop\\proga\\GO\\WB\\L2\\L2.10\\test\\test1.txt"
 	file1, _ := os.Open(fileName1)
 	defer file1.Close()
 	response1, err1 := PrintIsSorted(file1, less1)
@@ -42,7 +42,7 @@ func TestPrintIsSortedLexic(t *testing.T) {
 	}
 	less2, _ := BuildLess(flags2)
 
-	fileName2 := "C:\\Users\\79164\\Desktop\\proga\\GO\\WB\\L2\\L2.10\\test\\test2.txt"
+	fileName2 := filepath.Join("..", "test", "test2.txt")
 	file2, _ := os.Open(fileName2)
 	defer file2.Close()
 	response2, err2 := PrintIsSorted(file2, less2)
@@ -57,8 +57,8 @@ func TestPrintIsSortedLexic(t *testing.T) {
 	}
 	less3, _ := BuildLess(flags3)
 
-	fileName3 := "C:\\Users\\79164\\Desktop\\proga\\GO\\WB\\L2\\L2.10\\test\\test3.txt"
-	file3, err := os.Open(fileName3)
+	fileName3 := filepath.Join("..", "test", "test3.txt")
+	file3, _ := os.Open(fileName3)
 	defer file3.Close()
 	response3, err3 := PrintIsSorted(file3, less3)
 	assert.Nil(t, err3)
@@ -73,7 +73,7 @@ func TestPrintIsSortedMonth(t *testing.T) {
 	}
 	less, _ := BuildLess(flags)
 
-	fileName := "C:\\Users\\79164\\Desktop\\proga\\GO\\WB\\L2\\L2.10\\test\\test_month.txt"
+	fileName := filepath.Join("..", "test", "test_month.txt")
 	file, _ := os.Open(fileName)
 	defer file.Close()
 	response, err := PrintIsSorted(file, less)
@@ -88,7 +88,7 @@ func TestPrintIsSortedMonth(t *testing.T) {
 	}
 	less1, _ := BuildLess(flags1)
 
-	fileName1 := "C:\\Users\\79164\\Desktop\\proga\\GO\\WB\\L2\\L2.10\\test\\test_month1.txt"
+	fileName1 := filepath.Join("..", "test", "test_month1.txt")
 	file1, _ := os.Open(fileName1)
 	defer file1.Close()
 	response1, err1 := PrintIsSorted(file1, less1)

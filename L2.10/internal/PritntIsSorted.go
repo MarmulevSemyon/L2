@@ -8,7 +8,8 @@ import (
 	"strings"
 )
 
-func PrintIsSorted(file *os.File, less LessFunc) (string, error) {
+// PrintIsSorted возвращаяет сообщение об отсортированности файла file согласно функции сравнения
+func PrintIsSorted(file *os.File, less lessFunc) (string, error) {
 
 	br := bufio.NewReader(file)
 
@@ -19,7 +20,6 @@ func PrintIsSorted(file *os.File, less LessFunc) (string, error) {
 	for {
 		current, err := br.ReadString('\n')
 		if err != nil && err != io.EOF {
-			fmt.Println(err)
 			return "", err
 		}
 		current = strings.TrimRight(current, "\r\n")

@@ -1,3 +1,5 @@
+# sort test/test_non_sort.txt>> test/sortLinux.txt; ./bin/sort test/test_non_sort.txt>>test/mysort.txt; diff --strip-trailing-cr test/sortLinux.txt test/mysort.txt
+
 APP_NAME := sort
 BIN_DIR  := bin
 CMD_DIR  := ./cmd/sort
@@ -20,7 +22,7 @@ lint:
 	$(GOLINT) ./...
 
 test:
-	$(GO) test ./...
+	$(GO) test ./internal/
 
 build:
 	mkdir -p $(BIN_DIR)

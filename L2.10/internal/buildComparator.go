@@ -5,42 +5,42 @@ import (
 	"strings"
 )
 
-type LessFunc func(a, b string) bool
+type lessFunc func(a, b string) bool
 
-func BuildLess(flags LineArgs) (LessFunc, error) {
-	less := LexLess // базово — лексикографически
+func BuildLess(flags LineArgs) (lessFunc, error) {
+	less := lexLess // базово — лексикографически
 
 	// из nMh не может быть только 1
 	if flags.N {
-		less = NumericPrefLess
+		less = numericPrefLess
 	}
 	if flags.H {
-		less = HumanLess
+		less = humanLess
 	}
 	if flags.B {
 		// fmt.Println("ЗАШЛО В ФЛАГ -b")
-		less = WrapIgnoreTrailingBlanks(less)
+		less = wrapIgnoreTrailingBlanks(less)
 	}
 	if flags.K > 0 {
-		less = WrapKeyColumn(less, flags.K)
+		less = wrapKeyColumn(less, flags.K)
 	}
 
 	if flags.M {
-		less = MonthLess(less)
+		less = monthLess(less)
 	}
 	if flags.R {
-		less = WrapReverse(less)
+		less = wrapReverse(less)
 	}
 	return less, nil
 }
 
-func LexLess(a, b string) bool {
+func lexLess(a, b string) bool {
 	return a < b
 }
 
 // NumericPrefLess сравнивает строки как числа
 // Если числа равны, то сравниваем исходные строки лексикографически.
-func NumericPrefLess(a, b string) bool {
+func numericPrefLess(a, b string) bool {
 	aTrim := strings.TrimLeft(a, " ") // в GNU sort не смотрятся пробелы если числа
 	bTrim := strings.TrimLeft(b, " ") //
 
@@ -113,7 +113,7 @@ func isDigit(b byte) bool {
 	return b >= '0' && b <= '9'
 }
 
-func MonthLess(less LessFunc) LessFunc {
+func monthLess(less lessFunc) lessFunc {
 	return func(a, b string) bool {
 		// замена первого вхождения названия месяца на его номер
 		aMonth := parseMonth(a)
@@ -140,7 +140,7 @@ func parseMonth(str string) string {
 	return string(res)
 }
 
-func HumanLess(a, b string) bool {
+func humanLess(a, b string) bool {
 	aVal, indA := leadingNumberOrZero(a)
 	bVal, indB := leadingNumberOrZero(b)
 	aSuf, bSuf := 1.0, 1.0
@@ -162,13 +162,14 @@ func HumanLess(a, b string) bool {
 	if bVal < 0 {
 		bSuf *= -1
 	}
+	// сначала суффиксы
 	if aSuf < bSuf {
 		return true
 	}
 	if aSuf > bSuf {
 		return false
 	}
-
+	//  потом значения
 	if aVal < bVal {
 		return true
 	}
@@ -176,7 +177,7 @@ func HumanLess(a, b string) bool {
 		return false
 	}
 
-	//лексикографически исходные строки
+	//лексикографическое сравнени
 	return a < b
 }
 
@@ -200,7 +201,7 @@ func findSuffixAndMultyply(num float64, str string, indexLastDigit int) (float64
 	return num, suf
 }
 
-func WrapIgnoreTrailingBlanks(less LessFunc) LessFunc {
+func wrapIgnoreTrailingBlanks(less lessFunc) lessFunc {
 	return func(a, b string) bool {
 		aTrim := strings.TrimRight(a, " \t")
 		// fmt.Printf("ЗАТРИМИЛАСЬ ПЕРВАЯ СТРОКА\nбыло:<%s>\nстало:<%s>\n", a, aTrim)
@@ -212,7 +213,7 @@ func WrapIgnoreTrailingBlanks(less LessFunc) LessFunc {
 }
 
 // TODO: если равны то сравнивать по всей строке
-func WrapKeyColumn(less LessFunc, key int) LessFunc {
+func wrapKeyColumn(less lessFunc, key int) lessFunc {
 	return func(a, b string) bool {
 		aK := getValueByKIndex(a, key)
 		bK := getValueByKIndex(b, key)
@@ -221,13 +222,13 @@ func WrapKeyColumn(less LessFunc, key int) LessFunc {
 }
 func getValueByKIndex(str string, ind int) string {
 	res := strings.Split(str, "\t")
-	if len(res) < ind-1 {
+	if len(res) <= ind-1 {
 		return ""
 	}
 	return res[ind-1]
 }
 
-func WrapReverse(less LessFunc) LessFunc {
+func wrapReverse(less lessFunc) lessFunc {
 	return func(a, b string) bool {
 		return less(b, a)
 	}
