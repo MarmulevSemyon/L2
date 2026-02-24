@@ -17,12 +17,21 @@ type LineArgs struct {
 	B bool // — игнорировать хвостовые пробелы (trailing blanks).
 	C bool // — проверить, отсортированы ли данные; если нет, вывести сообщение об этом.
 	H bool // — сортировать по числовому значению с учётом суффиксов (например, К = килобайт, М = мегабайт — человекочитаемые размеры).
+
+	CPUProfile string
+	MemProfile string
+	Trace      string
 }
 
 // ParseLine парсит аргументы массив строк(командной строки) и возвращает структуру LineArgs.
-func ParseLine(args []string) (LineArgs, error) {
+func ParseLine(args []string) (LineArgs, []string, error) {
 	var flags LineArgs
 	fs := pflag.NewFlagSet("sort", pflag.ContinueOnError)
+
+	fs.StringVar(&flags.CPUProfile, "cpuprofile", "", "write CPU profile to file")
+	fs.StringVar(&flags.MemProfile, "memprofile", "", "write memory profile to file")
+	fs.StringVar(&flags.Trace, "trace", "", "write execution trace to file")
+
 	fs.IntVarP(&(flags.K), "key", "k", 0, "сортировать по столбцу (колонке) №N.")
 	fs.BoolVarP(&(flags.N), "numeric-sort", "n", false, "сортировать по числовому значению (строки интерпретируются как числа).")
 	fs.BoolVarP(&(flags.R), "reverse", "r", false, " сортировать в обратном порядке (reverse).")
@@ -34,13 +43,13 @@ func ParseLine(args []string) (LineArgs, error) {
 	fs.BoolVarP(&(flags.H), "human-numeric-sort", "h", false, "сортировать по числовому значению с учётом суффиксов (например, К = килобайт, М = мегабайт — человекочитаемые размеры).")
 
 	if err := fs.Parse(args); err != nil {
-		return LineArgs{}, fmt.Errorf("Ошибка аргументов: %w", err)
+		return LineArgs{}, nil, fmt.Errorf("Ошибка аргументов: %w", err)
 	}
 	if err := validate(flags); err != nil {
-		return LineArgs{}, fmt.Errorf("Ошибка аргументов: %w", err)
+		return LineArgs{}, nil, fmt.Errorf("Ошибка аргументов: %w", err)
 	}
-
-	return flags, nil
+	remainingArgs := fs.Args()
+	return flags, remainingArgs, nil
 }
 
 // Одновремменно не может быть двух из 'nMh'

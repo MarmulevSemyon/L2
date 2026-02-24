@@ -9,24 +9,20 @@ import (
 	"sync"
 )
 
-func Sort() {
-
-}
-
 type chunkResult struct {
 	path string
 	err  error
 }
 
 const bufSize = 1 << 20
-const chunkLimitBytes = 64 << 20 // лимит накопления строк в памяти перед сортировкой
+const chunkLimitBytes = 32 << 20 // лимит накопления строк в памяти перед сортировкой
 
 // MakeSortedChunks cоздаёт набор файлов с отсортированными строками.
 // r - ридер соритруемого файла;
 // less - функция сравнения двух строк;
 // workers - число работышей.
 // возвращает массив названий файлов и ошибку.
-func MakeSortedChunks(r io.Reader, less lessFunc, workers int) ([]string, error) {
+func MakeSortedChunks(r io.Reader, less LessFunc, workers int) ([]string, error) {
 
 	chIn := make(chan []string, workers) // чанки строк
 	resCh := make(chan chunkResult, workers)
@@ -59,7 +55,7 @@ func MakeSortedChunks(r io.Reader, less lessFunc, workers int) ([]string, error)
 }
 
 // работыши принимают массивы строк, сортируют, отдают на запись в tempFile, и затем отправляют названия файлов в resCh
-func startChunkWorkers(chIn <-chan []string, resCh chan<- chunkResult, less lessFunc, workers int) *sync.WaitGroup {
+func startChunkWorkers(chIn <-chan []string, resCh chan<- chunkResult, less LessFunc, workers int) *sync.WaitGroup {
 	var wg = sync.WaitGroup{}
 	wg.Add(workers)
 	for i := 0; i < workers; i++ {

@@ -5,9 +5,12 @@ import (
 	"strings"
 )
 
-type lessFunc func(a, b string) bool
+// LessFunc - Новый тип. функция сравнения
+type LessFunc func(a, b string) bool
 
-func BuildLess(flags LineArgs) (lessFunc, error) {
+// BuildLess создаёт функцию сравнения
+// flags - структура с флагами
+func BuildLess(flags LineArgs) (LessFunc, error) {
 	less := lexLess // базово — лексикографически
 
 	// из nMh не может быть только 1
@@ -113,7 +116,7 @@ func isDigit(b byte) bool {
 	return b >= '0' && b <= '9'
 }
 
-func monthLess(less lessFunc) lessFunc {
+func monthLess(less LessFunc) LessFunc {
 	return func(a, b string) bool {
 		// замена первого вхождения названия месяца на его номер
 		aMonth := parseMonth(a)
@@ -201,7 +204,7 @@ func findSuffixAndMultyply(num float64, str string, indexLastDigit int) (float64
 	return num, suf
 }
 
-func wrapIgnoreTrailingBlanks(less lessFunc) lessFunc {
+func wrapIgnoreTrailingBlanks(less LessFunc) LessFunc {
 	return func(a, b string) bool {
 		aTrim := strings.TrimRight(a, " \t")
 		// fmt.Printf("ЗАТРИМИЛАСЬ ПЕРВАЯ СТРОКА\nбыло:<%s>\nстало:<%s>\n", a, aTrim)
@@ -213,7 +216,7 @@ func wrapIgnoreTrailingBlanks(less lessFunc) lessFunc {
 }
 
 // TODO: если равны то сравнивать по всей строке
-func wrapKeyColumn(less lessFunc, key int) lessFunc {
+func wrapKeyColumn(less LessFunc, key int) LessFunc {
 	return func(a, b string) bool {
 		aK := getValueByKIndex(a, key)
 		bK := getValueByKIndex(b, key)
@@ -228,7 +231,7 @@ func getValueByKIndex(str string, ind int) string {
 	return res[ind-1]
 }
 
-func wrapReverse(less lessFunc) lessFunc {
+func wrapReverse(less LessFunc) LessFunc {
 	return func(a, b string) bool {
 		return less(b, a)
 	}

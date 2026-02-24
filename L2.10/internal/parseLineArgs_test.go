@@ -17,7 +17,7 @@ func TestParseLine(t *testing.T) {
 
 	empty := LineArgs{}
 	for i := range lineArgsErr {
-		actual, err := ParseLine(lineArgsErr[i])
+		actual, _, err := ParseLine(lineArgsErr[i])
 		assert.NotNil(t, err)
 		assert.Equal(t, empty, actual)
 	}
@@ -40,7 +40,7 @@ func TestParseLine(t *testing.T) {
 		H: false,
 	}
 	for i := range lineArgsN {
-		actual, err := ParseLine(lineArgsN[i])
+		actual, _, err := ParseLine(lineArgsN[i])
 		assert.Nil(t, err)
 		assert.Equal(t, expectedN, actual)
 	}
@@ -63,7 +63,7 @@ func TestParseLine(t *testing.T) {
 		H: false,
 	}
 	for _, v := range lineArgsM {
-		actual, err := ParseLine(v)
+		actual, _, err := ParseLine(v)
 		assert.Nil(t, err)
 		assert.Equal(t, expectedM, actual)
 	}
@@ -86,7 +86,7 @@ func TestParseLine(t *testing.T) {
 		H: true,
 	}
 	for _, v := range lineArgsH {
-		actual, err := ParseLine(v)
+		actual, _, err := ParseLine(v)
 		assert.Nil(t, err)
 		assert.Equal(t, expectedH, actual)
 	}

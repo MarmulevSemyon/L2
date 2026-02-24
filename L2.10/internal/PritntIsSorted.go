@@ -9,7 +9,7 @@ import (
 )
 
 // PrintIsSorted возвращаяет сообщение об отсортированности файла file согласно функции сравнения
-func PrintIsSorted(file *os.File, less lessFunc) (string, error) {
+func PrintIsSorted(file *os.File, less LessFunc) (string, error) {
 
 	br := bufio.NewReader(file)
 
