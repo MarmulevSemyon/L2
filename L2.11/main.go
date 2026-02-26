@@ -44,6 +44,6 @@ func findAnagram(slice []string) map[string][]string {
 	// Итоговая сложность O(n*m) + O(h)*О(n/h * log(n/h))
 
 	// h = n/2: O(n*m + n/2*2*log(2)) = O(n*(m+1)) = O(n*m) или
-	// h = 1:  O(n*m + n*log(n)) = O(n*m + n*log(n))
+	// h = 1:  O(n*m + n*log(n))
 	return res
 }
