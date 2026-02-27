@@ -21,14 +21,14 @@ import (
 // 	Trace      string
 // }
 
-func TestParseLine(t *testing.T) {
-	flagsErr := [][]string{{"grep", "-i", "-v", "-F", "-n", "-A", "1", "-B", "-1", "C", "12"},
-		{"grep", "-ivFn", "-A", "1", "-B", "-1"},
-		{"grep", "-ivFn", "-B", "-1", "C", "12"},
-		{"grep", "-ivF", "-A", "1", "-B", "-1", "C", "12"},
-		{"grep", "-ivn", "-B", "-1"},
-		{"grep", "-iv", "-B", "-1"},
-		{"grep", "-i", "-B", "-1"},
+func TestParseLineErr1(t *testing.T) {
+	flagsErr := [][]string{{"-i", "-v", "-F", "-n", "-A", "1", "-B", "-1", "-C", "12", "pattern", "file"},
+		{"-ivFn", "-A", "1", "-B", "-1", "pattern", "file"},
+		{"-ivFn", "-B", "-1", "-C", "12", "pattern", "file"},
+		{"-ivF", "-A", "1", "-B", "-1", "-C", "12", "pattern", "file"},
+		{"-ivn", "-B", "-1", "pattern", "file"},
+		{"-iv", "-B", "-1", "pattern", "file"},
+		{"-i", "-B", "-1", "pattern", "file"},
 	}
 
 	empty := Flags{}
@@ -37,13 +37,32 @@ func TestParseLine(t *testing.T) {
 		assert.NotNil(t, err)
 		assert.Equal(t, empty, actual)
 	}
+}
+func TestParseLineErr2(t *testing.T) {
+	flagsErr := [][]string{{"-i", "-v", "-F", "-n", "-A", "1", "-C", "12", "file"},
+		{"-ivFn", "-A", "1", "pattern"},
+		{"-ivFn", "-C", "12", "file"},
+		{"-ivF", "-A", "1", "-C", "12", "pattern"},
+		{"-ivn", "file"},
+		{"-iv", "pattern"},
+		{"-i", "file"},
+	}
+	empty := Flags{}
+	for i := range flagsErr {
+		actual, _, err := ParseLine(flagsErr[i])
+		assert.NotNil(t, err)
+		assert.Equal(t, empty, actual)
 
-	flags1 := [][]string{{"grep", "-i", "-v", "-F", "-n", "-A", "1", "-c", "-B", "1", "-C", "12"},
-		{"grep", "-ivFnc", "-A", "1", "-B", "1", "-C", "12"},
-		{"grep", "-ivncF", "-A", "1", "-C", "12", "-B", "1"},
-		{"grep", "-vicFn", "-C", "12", "-B", "1", "-A", "1"},
-		{"grep", "-vcFin", "-C", "12", "-A", "1", "-B", "1"},
-		{"grep", "-cvFin", "--context", "12", "--after-context", "1", "--before-context", "1"},
+	}
+}
+
+func TestParseLine(t *testing.T) {
+	flags1 := [][]string{{"-i", "-v", "-F", "-n", "-A", "1", "-c", "-B", "1", "-C", "12", "pattern", "file"},
+		{"-ivFnc", "-A", "1", "-B", "1", "-C", "12", "pattern", "file"},
+		{"-ivncF", "-A", "1", "-C", "12", "-B", "1", "pattern", "file"},
+		{"-vicFn", "-C", "12", "-B", "1", "-A", "1", "pattern", "file"},
+		{"-vcFin", "-C", "12", "-A", "1", "-B", "1", "pattern", "file"},
+		{"-cvFin", "--context", "12", "--after-context", "1", "--before-context", "1", "pattern", "file"},
 	}
 	expected1 := Flags{
 		After:      1,
@@ -59,5 +78,45 @@ func TestParseLine(t *testing.T) {
 		actual, _, err := ParseLine(flags1[i])
 		assert.Nil(t, err)
 		assert.Equal(t, expected1, actual)
+	}
+}
+func TestParseLineCtx(t *testing.T) {
+	flags1 := [][]string{{"-B", "1", "-C", "12", "pattern", "file"},
+		{"-A", "1", "-C", "12", "pattern", "file"},
+		{"-A", "1", "pattern", "file"},
+		{"-B", "1", "pattern", "file"},
+		{"-C", "12", "pattern", "file"},
+	}
+	expected := []Flags{
+		{
+			After:   12,
+			Before:  1,
+			Context: 12,
+		},
+		{
+			After:   1,
+			Before:  12,
+			Context: 12,
+		},
+		{
+			After:   1,
+			Before:  0,
+			Context: 0,
+		},
+		{
+			After:   0,
+			Before:  1,
+			Context: 0,
+		},
+		{
+			After:   12,
+			Before:  12,
+			Context: 12,
+		},
+	}
+	for i := range flags1 {
+		actual, _, err := ParseLine(flags1[i])
+		assert.Nil(t, err)
+		assert.Equal(t, expected[i], actual)
 	}
 }

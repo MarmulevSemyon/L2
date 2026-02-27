@@ -7,15 +7,15 @@ import (
 )
 
 type Flags struct {
-    After  int 		// -A N — после каждой найденной строки дополнительно вывести N строк после неё (контекст).
-    Before int 		// -B N — вывести N строк до каждой найденной строки.
-    Context int 	// -C N — вывести N строк контекста вокруг найденной строки (включает и до, и после; эквивалентно -A N -B N).
-    Count bool 		// -c — выводить только то количество строк, что совпадающих с шаблоном (т.е. вместо самих строк — число).
-    IgnoreCase bool // -i — игнорировать регистр.
-    Invert bool 	// -v — инвертировать фильтр: выводить строки, не содержащие шаблон.
-    Fixed bool 		// -F — воспринимать шаблон как фиксированную строку, а не регулярное выражение (т.е. выполнять точное совпадение подстроки).
-    LineNum bool 	// -n — выводить номер строки перед каждой найденной строкой.
-	
+	After      int  // -A N — после каждой найденной строки дополнительно вывести N строк после неё (контекст).
+	Before     int  // -B N — вывести N строк до каждой найденной строки.
+	Context    int  // -C N — вывести N строк контекста вокруг найденной строки (включает и до, и после; эквивалентно -A N -B N).
+	Count      bool // -c — выводить только то количество строк, что совпадающих с шаблоном (т.е. вместо самих строк — число).
+	IgnoreCase bool // -i — игнорировать регистр.
+	Invert     bool // -v — инвертировать фильтр: выводить строки, не содержащие шаблон.
+	Fixed      bool // -F — воспринимать шаблон как фиксированную строку, а не регулярное выражение (т.е. выполнять точное совпадение подстроки).
+	LineNum    bool // -n — выводить номер строки перед каждой найденной строкой.
+
 	CPUProfile string
 	MemProfile string
 	Trace      string
@@ -43,22 +43,45 @@ func ParseLine(args []string) (Flags, []string, error) {
 	if err := fs.Parse(args); err != nil {
 		return Flags{}, nil, fmt.Errorf("Ошибка аргументов: %w", err)
 	}
-	if err := validate(flags); err != nil {
+
+	if err := validateFlags(flags); err != nil {
 		return Flags{}, nil, fmt.Errorf("Ошибка аргументов: %w", err)
 	}
+
+	if flags.Context > 0 && flags.After == 0 {
+		flags.After = flags.Context
+	}
+	if flags.Context > 0 && flags.Before == 0 {
+		flags.Before = flags.Context
+	}
+
 	remainingArgs := fs.Args()
+	if err := validateArgs(remainingArgs); err != nil {
+		return Flags{}, nil, fmt.Errorf("Ошибка аргументов: %w", err)
+	}
+
 	return flags, remainingArgs, nil
 }
 
-func validate(flags Flags) error{
-	if flags.After < 0{
+func validateFlags(flags Flags) error {
+	if flags.After < 0 {
 		return fmt.Errorf("%d не может быть количеством строчек", flags.After)
 	}
-	if flags.Before < 0{
+	if flags.Before < 0 {
 		return fmt.Errorf("%d не может быть количеством строчек", flags.Before)
 	}
-	if flags.Context < 0{
+	if flags.Context < 0 {
 		return fmt.Errorf("%d не может быть количеством строчек", flags.Context)
 	}
+	return nil
+}
+
+func validateArgs(arg []string) error {
+	if len(arg) == 0 {
+		return fmt.Errorf("не указано регулярное выражение")
+	} else if len(arg) < 2 {
+		return fmt.Errorf("не указано файл")
+	}
+
 	return nil
 }

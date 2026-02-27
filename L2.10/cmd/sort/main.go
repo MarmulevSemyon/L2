@@ -16,6 +16,10 @@ func main() {
 		os.Exit(1)
 	}
 
+	if len(remainingArgs) == 0 {
+		fmt.Fprintln(os.Stderr, "Не указан входной файл")
+		os.Exit(1)
+	}
 	// ---- CPU profile ----
 	var cpuFile *os.File
 	if lineArgs.CPUProfile != "" {
@@ -55,10 +59,6 @@ func main() {
 	}
 
 	less, err := internal.BuildLess(lineArgs)
-	if len(remainingArgs) == 0 {
-		fmt.Fprintln(os.Stderr, "Не указан входной файл")
-		os.Exit(1)
-	}
 
 	fileName := remainingArgs[0]
 	file, err := os.Open(fileName)
