@@ -6,8 +6,11 @@ import (
 	"strings"
 )
 
+// Match - Новый тип. функция поиска совпадения
 type Match func(line string) bool
 
+// BildMatcher - создаёт функцию поиска совпадения
+// flags - структра с флагами, pattern который необходимо найти
 func BildMatcher(flags Flags, pattern string) (Match, error) {
 	realPattern := pattern
 	// fixed pattern

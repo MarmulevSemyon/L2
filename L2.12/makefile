@@ -20,15 +20,13 @@ vet:
 lint:
 	$(GOLINT) ./...
 
-test:
+test: build
 	$(GO) test ./...
+	./test/test.sh
 
 build:
 	mkdir -p $(BIN_DIR)
 	$(GO) build -o $(BIN_DIR)/$(APP_NAME) $(CMD_DIR)
-
-run: build
-	./$(BIN_DIR)/$(APP_NAME)
 
 clean:
 	rm -rf $(BIN_DIR)

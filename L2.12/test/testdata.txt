@@ -1,0 +1,17 @@
+Hello world
+HELLO WORLD
+hello again
+
+abc
+xxabcxx
+a.c
+axc
+a-c
+
+курс
+КУРС
+КуРс
+
+repeat
+repeat
+unique line

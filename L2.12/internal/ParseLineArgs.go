@@ -6,6 +6,7 @@ import (
 	"github.com/spf13/pflag"
 )
 
+// Flags - структура котрая хранит флаги
 type Flags struct {
 	After      int  // -A N — после каждой найденной строки дополнительно вывести N строк после неё (контекст).
 	Before     int  // -B N — вывести N строк до каждой найденной строки.
@@ -80,7 +81,7 @@ func validateArgs(arg []string) error {
 	if len(arg) == 0 {
 		return fmt.Errorf("не указано регулярное выражение")
 	} else if len(arg) < 2 {
-		return fmt.Errorf("не указано файл")
+		return fmt.Errorf("не указан файл")
 	}
 
 	return nil
