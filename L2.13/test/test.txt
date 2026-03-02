@@ -1,0 +1,11 @@
+a,b,c,d
+1,2,3,4
+no_delimiter
+x,,z
+,leading,field
+trailing,field,
+single
+a:b:c:d
+one|two|three
+,,,, 
+last,line,with,values
