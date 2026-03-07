@@ -6,11 +6,53 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"os/signal"
 	"strings"
+	"sync"
+	"syscall"
+	// "golang.org/x/sys/unix"
 )
+
+var currentPGID int
+var jobMu sync.Mutex
+
+func setCurrentPGID(pgid int) {
+	jobMu.Lock()
+	defer jobMu.Unlock()
+	currentPGID = pgid
+}
+
+func clearCurrentPGID() {
+	jobMu.Lock()
+	defer jobMu.Unlock()
+	currentPGID = 0
+}
+
+func getCurrentPGID() int {
+	jobMu.Lock()
+	defer jobMu.Unlock()
+	return currentPGID
+}
 
 func Run() {
 	reader := bufio.NewReader(os.Stdin)
+	sigCh := make(chan os.Signal, 1)
+	signal.Notify(sigCh, os.Interrupt)
+
+	// перехватываем ctrl+c и убиваем группу процессов (весь pipeline) по пиду группы
+	go func() {
+		for range sigCh {
+			pgid := getCurrentPGID()
+			if pgid != 0 {
+				// _ = unix.Kill(-pgid, unix.SIGINT)
+				_ = syscall.Kill(-pgid, syscall.SIGINT)
+				fmt.Print("\n")
+			} else {
+				fmt.Print("\n$ ")
+			}
+		}
+	}()
+
 	for {
 		fmt.Print("$ ")
 		line, err := reader.ReadString('\n')
@@ -40,11 +82,7 @@ func executeLine(line string) error {
 		return fmt.Errorf("parsePipeline: %v", err)
 	}
 
-	err = executePipeline(pipeline)
-	if err != nil {
-		return fmt.Errorf("executePipeline: %v", err)
-	}
-	return nil
+	return executePipeline(pipeline)
 }
 
 func parsePipeline(line string) (Pipeline, error) {
@@ -86,46 +124,102 @@ func executePipeline(p Pipeline) error {
 
 	// связываем команды между собой (подаём выход первого на вход последующего)
 	readersWriters := []*os.File{}
+	defer closeFiles(readersWriters)
+
 	execCommands[0].Stdin = os.Stdin
 	for i := 0; i < len(execCommands)-1; i++ {
 		r, w, err := os.Pipe()
 		if err != nil {
+			closeFiles(readersWriters)
 			return fmt.Errorf("os.Pipe(): %v", err)
 		}
 		readersWriters = append(readersWriters, r, w)
+
 		execCommands[i].Stderr = os.Stderr
 		execCommands[i].Stdout = w
 		execCommands[i+1].Stdin = r
-
 	}
 	last := len(execCommands) - 1
 	execCommands[last].Stdout = os.Stdout
 	execCommands[last].Stderr = os.Stderr
 
-	// запускаем все команды
-	for _, cmd := range execCommands {
-		if err := cmd.Start(); err != nil {
+	// первая команда создаёт process group
+	execCommands[0].SysProcAttr = &syscall.SysProcAttr{
+		Setpgid: true,
+	}
+	if err := execCommands[0].Start(); err != nil {
+		return fmt.Errorf("cmd.Start(): %v", err)
+	}
+
+	pgid := execCommands[0].Process.Pid
+	setCurrentPGID(pgid)
+	defer clearCurrentPGID()
+
+	// запускаем все команды и добавляем в группу к первой команде
+	for i := 1; i < len(execCommands); i++ {
+		execCommands[i].SysProcAttr = &syscall.SysProcAttr{
+			Setpgid: true,
+			Pgid:    pgid,
+		}
+		if err := execCommands[i].Start(); err != nil {
+			closeFiles(readersWriters)
 			return fmt.Errorf("cmd.Start(): %v", err)
 		}
 	}
-	for _, rw := range readersWriters {
-		if err := rw.Close(); err != nil {
-			return fmt.Errorf("rw.Close(): %v", err)
-		}
-	}
+
+	// закрывем читателя и писателя (для обработки yes | head -n 5)
+	closeFiles(readersWriters)
+
 	// Ждём все команды
-	for _, cmd := range execCommands {
-		if err := cmd.Wait(); err != nil {
-			if strings.Contains(err.Error(), "broken pipe") {
-				continue
-			}
-			return fmt.Errorf("cmd.Wait(): %v", err)
+	var waitErr error
+	for i, cmd := range execCommands {
+		err := cmd.Wait()
+		if isIgnorablePipelineErr(err, p.Commands[i]) {
+			continue
+		}
+		// возвращаем первую ошибку
+		if waitErr == nil {
+			waitErr = fmt.Errorf("cmd.Wait(): %v", err)
 		}
 	}
 
-	return nil
+	return waitErr
 }
+func isInterruptErr(err error) bool {
+	if err == nil {
+		return false
+	}
+	s := err.Error()
+	return strings.Contains(s, "interrupt")
+}
+func closeFiles(files []*os.File) {
+	for _, f := range files {
+		if f != nil {
+			_ = f.Close()
+		}
+	}
+}
+func isIgnorablePipelineErr(err error, cmd Command) bool {
+	if err == nil {
+		return true
+	}
 
+	s := err.Error()
+
+	if strings.Contains(s, "broken pipe") {
+		return true
+	}
+
+	if len(cmd.Args) > 0 && cmd.Args[0] == "grep" && strings.Contains(s, "exit status 1") {
+		return true
+	}
+
+	if strings.Contains(s, "interrupt") {
+		return true
+	}
+
+	return false
+}
 func buildExecCmd(command Command) (*exec.Cmd, error) {
 	if command.Args[0] == "cd" {
 		return nil, fmt.Errorf("cd cannot be used in pipeline")
@@ -143,13 +237,29 @@ func executeCommand(command Command) error {
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
+	cmd.SysProcAttr = &syscall.SysProcAttr{
+		Setpgid: true,
+	}
 
-	return cmd.Run()
+	if err := cmd.Start(); err != nil {
+		return err
+	}
+
+	setCurrentPGID(cmd.Process.Pid)
+	defer clearCurrentPGID()
+
+	err = cmd.Wait()
+	if err != nil {
+		if isInterruptErr(err) {
+			return nil
+		}
+	}
+	return err
 }
 
 func runCd(cmd Command) (bool, error) {
 	if len(cmd.Args) == 0 {
-		return false, nil
+		return true, nil
 	}
 	if cmd.Args[0] == "cd" {
 		if len(cmd.Args) < 2 {
@@ -161,5 +271,4 @@ func runCd(cmd Command) (bool, error) {
 		return true, os.Chdir(cmd.Args[1])
 	}
 	return false, nil
-
 }
