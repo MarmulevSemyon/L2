@@ -3,7 +3,7 @@ package config
 import (
 	"fmt"
 
-	flag "github.com/spf13/pflag"
+	"github.com/spf13/pflag"
 )
 
 // Config хранит параметры запуска программы.
@@ -18,7 +18,7 @@ type Config struct {
 func Parse(args []string) (Config, error) {
 	var cfg Config
 
-	fs := flag.NewFlagSet("wget", flag.ContinueOnError)
+	fs := pflag.NewFlagSet("wget", pflag.ContinueOnError)
 
 	fs.IntVarP(&cfg.Depth, "depth", "d", 1, "recursion depth")
 	fs.StringVarP(&cfg.OutputDir, "output", "o", "output", "output directory")
