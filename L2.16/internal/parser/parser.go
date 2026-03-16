@@ -11,8 +11,10 @@ import (
 	"golang.org/x/net/html"
 )
 
+// LinkKind описывает тип найденной ссылки в HTML-документе.
 type LinkKind string
 
+// Константы LinkKind описывают поддерживаемые типы ссылок.
 const (
 	LinkPage       LinkKind = "page"
 	LinkStylesheet LinkKind = "stylesheet"
@@ -20,15 +22,18 @@ const (
 	LinkImage      LinkKind = "image"
 )
 
+// Константы LinkKind описывают поддерживаемые типы ссылок.
 type Link struct {
 	URL  string
 	Kind LinkKind
 }
 
+// IsHTML проверяет, соответствует ли Content-Type HTML-документу.
 func IsHTML(contentType string) bool {
 	return strings.Contains(strings.ToLower(contentType), "text/html")
 }
 
+// ExtractLinks извлекает из HTML-документа ссылки на страницы и ресурсы.
 func ExtractLinks(htmlData []byte, baseURL string) ([]Link, error) {
 	root, err := html.Parse(bytes.NewReader(htmlData))
 	if err != nil {
@@ -156,6 +161,7 @@ func uniqueLinks(items []Link) []Link {
 	return result
 }
 
+// RewriteHTMLLinks переписывает ссылки в HTML-документе на локальные относительные пути.
 func RewriteHTMLLinks(htmlData []byte, pageURL string, pageLocalPath string, rootDir string) ([]byte, error) {
 	rootNode, err := html.Parse(bytes.NewReader(htmlData))
 	if err != nil {

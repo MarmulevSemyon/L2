@@ -7,10 +7,12 @@ import (
 	"time"
 )
 
+// Fetcher выполняет HTTP-запросы и получает содержимое ресурсов.
 type Fetcher struct {
 	client *http.Client
 }
 
+// Response содержит результат HTTP-запроса.
 type Response struct {
 	FinalURL    string
 	StatusCode  int
@@ -18,6 +20,7 @@ type Response struct {
 	Body        []byte
 }
 
+// New создаёт новый экземпляр Fetcher с заданным таймаутом.
 func New(timeout time.Duration) *Fetcher {
 	return &Fetcher{
 		client: &http.Client{
@@ -26,6 +29,7 @@ func New(timeout time.Duration) *Fetcher {
 	}
 }
 
+// Fetch скачивает ресурс по URL и возвращает HTTP-ответ в удобной структуре.
 func (f *Fetcher) Fetch(rawURL string) (Response, error) {
 	req, err := http.NewRequest(http.MethodGet, rawURL, nil)
 	if err != nil {

@@ -6,6 +6,7 @@ import (
 	flag "github.com/spf13/pflag"
 )
 
+// Config хранит параметры запуска программы.
 type Config struct {
 	URL         string
 	Depth       int
@@ -13,6 +14,7 @@ type Config struct {
 	Concurrency int
 }
 
+// Parse разбирает аргументы командной строки и возвращает конфигурацию приложения.
 func Parse(args []string) (Config, error) {
 	var cfg Config
 
@@ -20,7 +22,7 @@ func Parse(args []string) (Config, error) {
 
 	fs.IntVarP(&cfg.Depth, "depth", "d", 1, "recursion depth")
 	fs.StringVarP(&cfg.OutputDir, "output", "o", "output", "output directory")
-	fs.IntVarP(&cfg.Concurrency, "concurrency", "c", 4, "number of concurrent downloads")
+	fs.IntVarP(&cfg.Concurrency, "concurrency", "c", 1, "number of concurrent downloads")
 
 	if err := fs.Parse(args); err != nil {
 		return Config{}, fmt.Errorf("parse flags: %w", err)

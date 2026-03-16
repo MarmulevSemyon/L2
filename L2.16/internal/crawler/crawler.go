@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/url"
 	"strings"
+	"sync"
 
 	"wget/internal/fetcher"
 	"wget/internal/parser"
@@ -11,14 +12,27 @@ import (
 	"wget/internal/urlutil"
 )
 
+// Task описывает одну задачу на обработку URL.
+type Task struct {
+	URL   string
+	Depth int
+	Kind  parser.LinkKind
+}
+
+// Crawler выполняет обход сайта, скачивание страниц и ресурсов.
 type Crawler struct {
-	fetcher   *fetcher.Fetcher
-	storage   *storage.Storage
-	visited   map[string]struct{}
-	host      string
+	fetcher *fetcher.Fetcher
+	storage *storage.Storage
+
+	host string
+
+	visited map[string]struct{}
+	mu      sync.Mutex
+
 	entryPath string
 }
 
+// Crawler выполняет обход сайта, скачивание страниц и ресурсов.
 func New(fetcher *fetcher.Fetcher, storage *storage.Storage, startURL string) (*Crawler, error) {
 	parsedURL, err := url.Parse(startURL)
 	if err != nil {
@@ -37,41 +51,114 @@ func New(fetcher *fetcher.Fetcher, storage *storage.Storage, startURL string) (*
 	}, nil
 }
 
+// New создаёт новый экземпляр Crawler для стартового URL.
 func (c *Crawler) EntryPath() string {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
 	return c.entryPath
 }
 
-func (c *Crawler) CrawlPage(rawURL string, depth int) error {
-	if depth < 0 {
+func (c *Crawler) setEntryPath(path string) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	if c.entryPath == "" {
+		c.entryPath = path
+	}
+}
+
+func (c *Crawler) markVisitedIfNew(rawURL string) bool {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	if _, exists := c.visited[rawURL]; exists {
+		return false
+	}
+
+	c.visited[rawURL] = struct{}{}
+	return true
+}
+
+// Run запускает приложение и координирует процесс скачивания сайта.
+func (c *Crawler) Run(startURL string, depth int, concurrency int) error {
+
+	tasks := make(chan Task, concurrency*4)
+
+	var workersWG sync.WaitGroup
+	var tasksWG sync.WaitGroup
+
+	worker := func() {
+		defer workersWG.Done()
+
+		for task := range tasks {
+			c.processTask(task, tasks, &tasksWG)
+			tasksWG.Done()
+		}
+	}
+
+	for i := 0; i < concurrency; i++ {
+		workersWG.Add(1)
+		go worker()
+	}
+
+	tasksWG.Add(1)
+	tasks <- Task{
+		URL:   startURL,
+		Depth: depth,
+		Kind:  parser.LinkPage,
+	}
+
+	tasksWG.Wait()
+	close(tasks)
+	workersWG.Wait()
+
+	return nil
+}
+
+func (c *Crawler) processTask(task Task, tasks chan<- Task, tasksWG *sync.WaitGroup) {
+	switch task.Kind {
+	case parser.LinkPage:
+		if err := c.processPage(task, tasks, tasksWG); err != nil {
+			fmt.Printf("warn: %v\n", err)
+		}
+	case parser.LinkStylesheet, parser.LinkScript, parser.LinkImage:
+		if err := c.processResource(task); err != nil {
+			fmt.Printf("warn: %v\n", err)
+		}
+	default:
+		fmt.Printf("warn: unknown task kind for %s\n", task.URL)
+	}
+}
+
+func (c *Crawler) processPage(task Task, tasks chan<- Task, tasksWG *sync.WaitGroup) error {
+	if task.Depth < 0 {
 		return nil
 	}
 
-	if !c.isSameHost(rawURL) {
+	if !c.isSameHost(task.URL) {
 		return nil
 	}
 
-	if c.isVisited(rawURL) {
+	if !c.markVisitedIfNew(task.URL) {
 		return nil
 	}
 
-	c.markVisited(rawURL)
+	fmt.Printf("download page: %s (depth=%d)\n", task.URL, task.Depth)
 
-	fmt.Printf("download page: %s (depth=%d)\n", rawURL, depth)
-
-	resp, err := c.fetcher.Fetch(rawURL)
+	resp, err := c.fetcher.Fetch(task.URL)
 	if err != nil {
-		return fmt.Errorf("fetch page %s: %w", rawURL, err)
+		return fmt.Errorf("fetch page %s: %w", task.URL, err)
 	}
 
 	localPath, err := urlutil.LocalPath(c.storage.RootDir(), resp.FinalURL, resp.ContentType)
 	if err != nil {
 		return fmt.Errorf("build local path for %s: %w", resp.FinalURL, err)
 	}
-	if c.entryPath == "" {
-		c.entryPath = localPath
-	}
-	dataToSave := resp.Body
 
+	c.setEntryPath(localPath)
+
+	dataToSave := resp.Body
 	if parser.IsHTML(resp.ContentType) {
 		rewrittenHTML, err := parser.RewriteHTMLLinks(resp.Body, resp.FinalURL, localPath, c.storage.RootDir())
 		if err != nil {
@@ -100,44 +187,47 @@ func (c *Crawler) CrawlPage(rawURL string, depth int) error {
 		fmt.Printf("found [%s]: %s\n", link.Kind, link.URL)
 
 		switch link.Kind {
-
 		case parser.LinkPage:
-			if depth > 0 {
-				if !c.isSameHost(link.URL) && link.Kind == parser.LinkPage {
-					fmt.Printf("skip external host: [%s] %s\n", link.Kind, link.URL)
-					continue
-				}
-
-				if err := c.CrawlPage(link.URL, depth-1); err != nil {
-					fmt.Printf("warn: %v\n", err)
-				}
+			if task.Depth > 0 && c.isSameHost(link.URL) {
+				// кладём в отдельной горутине
+				enqueueTask(tasks, tasksWG, Task{
+					URL:   link.URL,
+					Depth: task.Depth - 1,
+					Kind:  parser.LinkPage,
+				})
 			}
 
 		case parser.LinkStylesheet, parser.LinkScript, parser.LinkImage:
-			if !c.isAllowedResourceHost(link.URL) {
+			if c.isAllowedResourceHost(link.URL) {
+				// кладём в отдельной горутине
+				enqueueTask(tasks, tasksWG, Task{
+					URL:   link.URL,
+					Depth: task.Depth,
+					Kind:  link.Kind,
+				})
+			} else {
 				fmt.Printf("skip external resource: [%s] %s\n", link.Kind, link.URL)
-				continue
-			}
-			if err := c.DownloadResource(link.URL); err != nil {
-				fmt.Printf("warn: %v\n", err)
 			}
 		}
 	}
+
 	return nil
 }
-func (c *Crawler) DownloadResource(rawURL string) error {
 
-	if c.isVisited(rawURL) {
+func (c *Crawler) processResource(task Task) error {
+	if !c.isAllowedResourceHost(task.URL) {
 		return nil
 	}
 
-	c.markVisited(rawURL)
+	if !c.markVisitedIfNew(task.URL) {
+		return nil
+	}
 
-	fmt.Printf("download resource: %s\n", rawURL)
+	fmt.Printf("download resource: %s\n", task.URL)
 
-	resp, err := c.fetcher.Fetch(rawURL)
+	resp, err := c.fetcher.Fetch(task.URL)
 	if err != nil {
-		return fmt.Errorf("fetch resource %s: %w", rawURL, err)
+		return fmt.Errorf("fetch resource %s: %w", task.URL, err)
 	}
 
 	localPath, err := urlutil.LocalPath(c.storage.RootDir(), resp.FinalURL, resp.ContentType)
@@ -154,15 +244,6 @@ func (c *Crawler) DownloadResource(rawURL string) error {
 	return nil
 }
 
-func (c *Crawler) isVisited(rawURL string) bool {
-	_, exists := c.visited[rawURL]
-	return exists
-}
-
-func (c *Crawler) markVisited(rawURL string) {
-	c.visited[rawURL] = struct{}{}
-}
-
 func (c *Crawler) isSameHost(rawURL string) bool {
 	parsedURL, err := url.Parse(rawURL)
 	if err != nil {
@@ -171,6 +252,7 @@ func (c *Crawler) isSameHost(rawURL string) bool {
 
 	return parsedURL.Host == c.host
 }
+
 func (c *Crawler) isAllowedResourceHost(rawURL string) bool {
 	parsedURL, err := url.Parse(rawURL)
 	if err != nil {
@@ -182,4 +264,13 @@ func (c *Crawler) isAllowedResourceHost(rawURL string) bool {
 	}
 
 	return strings.HasSuffix(parsedURL.Host, "."+c.host)
+}
+
+// если класть не в отдельной горутине, то работыш заблочится при заполнении буфераи будет deadlock
+func enqueueTask(tasks chan<- Task, tasksWG *sync.WaitGroup, task Task) {
+	tasksWG.Add(1)
+
+	go func() {
+		tasks <- task
+	}()
 }

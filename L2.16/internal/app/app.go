@@ -24,8 +24,8 @@ func Run(cfg config.Config) error {
 		return fmt.Errorf("create crawler: %w", err)
 	}
 
-	if err := c.CrawlPage(cfg.URL, cfg.Depth); err != nil {
-		return fmt.Errorf("crawl page: %w", err)
+	if err := c.Run(cfg.URL, cfg.Depth, cfg.Concurrency); err != nil {
+		return fmt.Errorf("run crawler: %w", err)
 	}
 	if c.EntryPath() != "" {
 		fmt.Printf("open this file offline: %s\n", c.EntryPath())

@@ -8,6 +8,7 @@ import (
 	"strings"
 )
 
+// LocalPath строит локальный путь для сохранения ресурса на основе URL и Content-Type.
 func LocalPath(rootDir string, rawURL string, contentType string) (string, error) {
 	parsedURL, err := url.Parse(rawURL)
 	if err != nil {
@@ -79,6 +80,7 @@ func extensionByContentType(contentType string) string {
 	}
 }
 
+// LocalPathForRewrite строит ожидаемый локальный путь для ссылки при переписывании HTML.
 func LocalPathForRewrite(rootDir string, rawURL string) (string, error) {
 	parsedURL, err := url.Parse(rawURL)
 	if err != nil {
