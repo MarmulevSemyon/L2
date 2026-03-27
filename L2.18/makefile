@@ -1,7 +1,7 @@
 
-APP_NAME := telnet
+APP_NAME := httpserver
 BIN_DIR  := bin
-CMD_DIR  := ./cmd/telnet
+CMD_DIR  := ./cmd/httpserver
 
 GO      := go
 GOFMT   := gofmt
